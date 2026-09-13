@@ -38,7 +38,8 @@ services, repositories, guards, and schema changes.
 - **AuthZ / IDOR**: every endpoint reads `@CurrentUser()` and the service enforces ownership
   (e.g. `row.tutorId !== userId`) before returning/mutating. A user must not read or delete
   another user's classes/sessions/etc. by guessing a UUID. Verify new routes aren't
-  accidentally `@Public()` and admin actions use `@Admin()`.
+  accidentally `@Public()` and admin actions use `@Roles('ADMIN')` + `RolesGuard` (there is no
+  `@Admin()` decorator in this repo).
 - **AuthN**: JWT verification not bypassed; access vs. refresh secrets not confused; token
   TTLs sane; no tokens/passwords logged.
 - **Injection**: Drizzle used parameterized (no raw string SQL concatenation); dynamic column
@@ -49,6 +50,11 @@ services, repositories, guards, and schema changes.
   `process.env`/`ConfigModule` only.
 - **Data exposure**: responses don't leak password hashes, other users' PII, or internal
   fields; error messages don't reveal existence of others' records inconsistently.
+- **RPC responders** (`{name}.rpc.controller.ts`): the JWT guard only runs on the HTTP side —
+  `gateway` authenticates the caller and forwards trusted `userId`/role in the payload, but the
+  RPC handler must still call the *same* ownership-checking service method the HTTP controller
+  uses, not a shortcut that skips it. Also check `@UseFilters(RpcExceptionFilter)` is present
+  (an unfiltered exception can leak a stack trace back through `gateway`).
 - **Other**: unbounded pagination `limit`, missing rate-limit on auth/reset flows, unsafe
   `onDelete` cascades, email/reset-token handling.
 

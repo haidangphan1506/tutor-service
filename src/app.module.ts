@@ -3,14 +3,24 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
-import { EmailModule } from './features/email/email.module';
-import { RedisModule } from './features/redis/redis.module';
 import { RabbitMQModule } from './features/rabbitmq/rabbitmq.module';
-// import { NotificationModule } from './features/notification/notification.module';
-import { JwtAuthGuard, LanguageGuard, TokenBucketGuard } from '@packages/guards';
+import { UserModule } from './features/user/user.module';
+import { AgentsModule } from './features/agents/agents.module';
+import { AttendanceModule } from './features/attendance/attendance.module';
+import { ChapterModule } from './features/chapter/chapter.module';
+import { ChatModule } from './features/chat/chat.module';
+import { ClassModule } from './features/class/class.module';
+import { CurriculumModule } from './features/curriculum/curriculum.module';
+import { DashboardModule } from './features/dashboard/dashboard.module';
+import { ExerciseModule } from './features/exercise/exercise.module';
+import { LessonModule } from './features/lesson/lesson.module';
+import { ReportModule } from './features/report/report.module';
+import { ScheduleModule } from './features/schedule/schedule.module';
+import { SessionModule } from './features/session/session.module';
+import { TuitionModule } from './features/tuition/tuition.module';
+import { JwtAuthGuard, LanguageGuard } from '@packages/guards';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { UploadModule } from './features/uploads/upload.module';
 
 @Module({
   imports: [
@@ -18,11 +28,21 @@ import { UploadModule } from './features/uploads/upload.module';
       isGlobal: true,
     }),
     DatabaseModule,
-    EmailModule,
-    RedisModule,
     RabbitMQModule,
-    // NotificationModule,
-    UploadModule,
+    UserModule,
+    ClassModule,
+    CurriculumModule,
+    ChapterModule,
+    LessonModule,
+    TuitionModule,
+    ScheduleModule,
+    SessionModule,
+    ExerciseModule,
+    AttendanceModule,
+    DashboardModule,
+    AgentsModule,
+    ReportModule,
+    ChatModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1h' },
@@ -38,10 +58,6 @@ import { UploadModule } from './features/uploads/upload.module';
     {
       provide: APP_GUARD,
       useClass: LanguageGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: TokenBucketGuard,
     },
   ],
 })

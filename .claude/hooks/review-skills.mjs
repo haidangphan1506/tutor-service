@@ -50,16 +50,19 @@ process.stdin.on('end', () => {
 
   const reason = [
     'Before finishing this task, keep the project knowledge in sync with what changed under',
-    'src/. Review all three and UPDATE whatever is now stale:',
+    'src/. Review all four and UPDATE whatever is now stale:',
     '',
     '1. Rules — `.claude/rules/*.md`: if a convention/constraint changed or a new one appeared.',
     '2. Skills — `.claude/skills/*/SKILL.md`: if a scaffolding pattern/feature changed, or add',
     '   a new skill for a new repeatable workflow.',
-    '3. Memory — MEMORY.md + your memory files: if this task revealed a durable fact, decision,',
+    '3. Agents — `.claude/agents/*.md`: if the change makes an agent\'s described layering,',
+    '   tech stack, or commands wrong (this has drifted silently before — don\'t skip it just',
+    '   because agents aren\'t normally read during a task).',
+    '4. Memory — MEMORY.md + your memory files: if this task revealed a durable fact, decision,',
     '   or preference not already captured in the repo, record it (and link it from MEMORY.md).',
     '',
-    'Only touch skill/rule/memory files here — no unrelated code edits. If all three are already',
-    'in sync, reply briefly "skills/rules/memory already up to date" and stop.',
+    'Only touch skill/rule/agent/memory files here — no unrelated code edits. If all four are',
+    'already in sync, reply briefly "skills/rules/agents/memory already up to date" and stop.',
   ].join('\n');
 
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));

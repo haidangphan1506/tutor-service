@@ -69,4 +69,6 @@ Decorate each route with `@ApiOperation`, `@ApiBody`/`@ApiQuery`/`@ApiParam`, an
 - Controllers hold no business logic — delegate everything to the service, passing `user.id`.
 - Import `ZodValidationPipe` from `@packages/pipes`, DTOs/schemas from `@packages/entities/foo`.
 - Routes are protected by the global `JwtAuthGuard`. Add `@Public()` from `@packages/decorators`
-  only for intentionally open endpoints, `@Admin()` for admin-only ones.
+  only for intentionally open endpoints, `@Roles('ADMIN')` (from `@packages/decorators`, paired
+  with `RolesGuard` from `@packages/guards`) for admin-only ones — there is no `@Admin()`
+  decorator in this repo.

@@ -34,7 +34,10 @@ dependency order (each depends on the one above):
 5. **generate-controller** — routes + Swagger.
 6. **generate-module** — module file + wire into `app.module.ts`.
 
-The per-layer skills carry the detailed spec; the summary below is the shape to match.
+The per-layer skills carry the detailed spec; the summary below is the shape to match. Every
+owned feature here is also reachable from `gateway` over RPC — once the HTTP side is scaffolded,
+add `{name}.rpc.controller.ts` via the root `add-rpc-endpoint` skill (touches both this repo and
+`gateway`) unless the feature is realtime-only like `chat`.
 
 ## Naming conventions
 

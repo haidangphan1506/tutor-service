@@ -7,7 +7,12 @@ this is now an education / tutoring domain.)
 
 - **Layers**: `{name}.controller.ts` → `{name}.service.ts` → `{name}.repository.ts`, plus
   `{name}.module.ts`. Controllers hold no business logic (they only read `@CurrentUser()` and
-  delegate); repositories hold all Drizzle access.
+  delegate); repositories hold all Drizzle access. Every owned feature (all but `chat`, which
+  is realtime via `chat.gateway.ts`) also has a `{name}.rpc.controller.ts` —
+  `@UseFilters(RpcExceptionFilter)` (`@packages/filters`), one
+  `@MessagePattern('<feature>.<methodName>')` per gateway call, delegating to the *same*
+  `*Service` the HTTP controller uses. See `../../../.claude/rules/architecture.md` for the
+  cross-repo RPC contract and the `add-rpc-endpoint` skill for adding a new pattern.
 - **Entities live separately** under `src/packages/entities/{domain}/` as
   `{domain}.schema.ts` (Zod), `{domain}.dto.ts` (inferred types), and `index.ts` (barrel).
 - **Service methods** are suffixed `...Service` (`createClassService`, `getClassesService`,
@@ -35,35 +40,6 @@ this is now an education / tutoring domain.)
   still return `{ <resource>, pagination }`. See `SessionRepository.getAll` (`GET /sessions`).
 - **Admin endpoints**: use `@Roles('ADMIN')` decorator (from `@packages/decorators`) +
   `RolesGuard` (from `@packages/guards`) — not a non-existent `@Admin()` decorator.
-- **`/students/*` and `/admin/students/*` are two separate, unrelated surfaces** — don't assume
-  a fix in one applies to the other. `src/features/student/*` is the normal feature-layered
-  student domain (parent linking, class enrollment, scores, sessions). `src/features/admin/*`
-  (`AdminController`/`AdminService`/`AdminRepository`) is a *generic* managed-user CRUD shared by
-  both `/admin/students` and `/admin/tutors` via a single `ManagedRole` ('TUTOR' | 'STUDENT')
-  parameter and one `publicColumns` projection — it has no parent-linking concept by default.
-  When a student-only field needs to reach the admin surface, add a dedicated repo method (e.g.
-  `findStudentDetail` selecting `parentId`/`address`/`district`/`province`/`tutorId`,
-  `findParentInfo` for the linked row) and branch only in the student-specific service method
-  (`getStudent`) — don't widen `publicColumns` or the shared `getManagedUser`/`list`/`update`/
-  `delete` helpers, since that would also affect Tutors. The same split applies to **update**:
-  when the student surface needs more writable fields than the tutor surface, add a dedicated
-  `updateManagedStudentSchema` that `.extend()`s the shared `updateManagedUserSchema` (never
-  widen the shared one — that leaks student-only fields onto `/admin/tutors/:id`), do the extra
-  FK/uniqueness checks (`AdminRepository.existsWithRole`, `findByUserCode`) in the student-only
-  service method (`updateStudent`), then delegate to the shared private `updateManagedUser` for
-  the actual write (its `dto` param is typed as the union of both schemas so it still accepts the
-  wider student payload) and return via `getStudent` for the fully-enriched response. See
-  `AdminService.updateStudent` / `updateManagedStudentSchema` (`admin.schema.ts`) as the reference.
-- **Role-gated self-update field restriction**: when a self-service update route
-  (`@CurrentUser()`-scoped, e.g. `PUT /users`) must forbid one role from changing specific fields
-  while an admin-by-id route (`PUT /users/:id`) stays unrestricted, don't add the check to the
-  shared write method — wrap it in a dedicated service method (e.g.
-  `UserService.updateOwnProfileService({ id, role, data })`) that inspects `data` for the
-  forbidden keys, throws `BadRequestException` with a dedicated `ERROR_MESSAGES` entry on a hit,
-  and otherwise delegates to the general `updateUserService`. Only the self-update controller
-  action calls the wrapper; the by-id action keeps calling the general method directly. See
-  `UserService.updateOwnProfileService` (blocks STUDENT from editing `firstName`/`lastName`) as
-  the reference.
 - **Error messages**: use `ERROR_MESSAGES` constants from `src/data/constants/error.constant.ts`.
   Never hardcode strings in `BadRequestException` / `ConflictException` / etc. For messages with
   dynamic values, compose via template literal: `` `${ERROR_MESSAGES.EMAIL_EXISTS}: ${email}` ``.
@@ -106,12 +82,17 @@ this is now an education / tutoring domain.)
   (`@packages/helpers`), `ZodValidationPipe` (`@packages/pipes`), `@CurrentUser`/`@Public`/
   `@Admin` (`@packages/decorators`). Never re-implement pagination, validation, or UUID checks,
   and do not use the old `@User` decorator.
-- **Infra modules** (`src/features/redis/*`, `src/features/rabbitmq/*`) are a deliberate
-  exception to the layering above — they wrap an external connection, not a domain resource, so
-  there is no repository and normally no controller. Shape: `@Global()` module, one `Service`
-  owning the connection lifecycle (`OnModuleInit`/`OnModuleDestroy`, reads its URL from
-  `ConfigService`, logs via `Logger` not `console.log`), exported so any feature can inject it
-  directly (no need to add it to that feature's `imports`). For pub/sub (`rabbitmq`), split
-  publish/consume into separate `Producer`/`Consumer` classes that take the connection service in
-  their constructor rather than piling methods onto the connection `Service` itself. See
-  `RabbitMQModule` (`RabbitMQService` + `RabbitMQProducer` + `RabbitMQConsumer`) as the reference.
+- **Infra modules** (`src/features/rabbitmq/*` — the only one left here; `redis`/`email`/
+  `uploads` moved to `third-service`, which owns them) are a deliberate exception to the
+  layering above — they wrap an external connection, not a domain resource, so there is no
+  repository and normally no controller. Shape: `@Global()` module, one `Service` owning the
+  connection lifecycle (`OnModuleInit`/`OnModuleDestroy`, reads its URL from `ConfigService`,
+  logs via `Logger` not `console.log`), exported so any feature can inject it directly (no need
+  to add it to that feature's `imports`). For pub/sub (`rabbitmq`), split publish/consume into
+  separate `Producer`/`Consumer` classes that take the connection service in their constructor
+  rather than piling methods onto the connection `Service` itself. See `RabbitMQModule`
+  (`RabbitMQService` + `RabbitMQProducer` + `RabbitMQConsumer`) as the reference.
+- **`src/features/user/*`** is a deliberate exception too — a read-only lookup (`getUserByField`)
+  against the shared `users` table (this DB and `user`'s DB are the same Postgres instance).
+  No controller, no `.rpc.controller.ts`, not a domain feature — don't add write methods or a
+  controller to it; the `user` service owns that data.

@@ -1,12 +1,13 @@
 ---
 name: test
-description: Runs and manages tests for this NestJS tutoring backend — unit tests (Bun test), E2E tests (Jest + Supertest), coverage reports. Use when asked to run tests, write tests, fix failing tests, or check test coverage.
+description: Runs and manages tests for this NestJS tutoring backend — unit + E2E tests (Jest + Supertest), coverage reports. Use when asked to run tests, write tests, fix failing tests, or check test coverage.
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 model: sonnet
 ---
 
 You are the **Test agent** for a NestJS 11 + TypeScript education/tutoring backend
-(PostgreSQL via Drizzle ORM, Redis, Zod v4 validation, Passport JWT).
+(PostgreSQL via Drizzle ORM, Zod v4 validation, Passport JWT). No Redis here — that lives in
+`third-service`.
 
 ## CRITICAL: Selective File Reading
 
@@ -29,40 +30,40 @@ You are the **Test agent** for a NestJS 11 + TypeScript education/tutoring backe
 ## Before you start
 
 - Read `CLAUDE.md` and understand the testing setup:
-  - **Two test runners coexist**: Jest (`bun run test:e2e`) and Bun test (everything else)
-  - Unit tests: `*.spec.ts` (Bun test)
-  - E2E tests: `*.e2e-spec.ts` (Jest + Supertest)
-  - Test files live in `test/` directory
+  - **One runner: Jest**, for both unit and E2E — `bun run test`/`test:watch`/`test:cov` all
+    invoke plain `jest`; `test:e2e` invokes `jest --config ./test/jest-e2e.json`. There is no
+    separate Bun-native test runner despite older docs having claimed one (`bun run <script>`
+    just uses Bun as the task runner/package manager, not as the test engine).
+  - Unit tests: `*.spec.ts`. E2E tests: `*.e2e-spec.ts`. Both live in `test/`.
   - No DB fixtures or test containers exist — E2E tests currently only test the health endpoint
 
 ## Test Commands
 
 ```bash
-# Unit Tests (Bun test)
+# Unit + E2E (Jest)
 bun run test              # Run all unit tests
 bun run test:watch        # Run in watch mode
-bun run test:cov          # Run with coverage (c8-backed)
-
-# E2E Tests (Jest + Supertest)
-bun run test:e2e          # Run E2E tests (requires Node.js)
+bun run test:cov          # Run with coverage
+bun run test:e2e          # Run E2E tests (separate Jest config)
 
 # Debug
-bun run test:debug        # Debug tests with inspect
+bun run test:debug        # node --inspect-brk into Jest, --runInBand
 ```
 
 ## How to Run Tests
 
 1. **Run all tests**: `bun run test`
-2. **Run specific test file**: `bun test test/path/to/file.spec.ts`
-3. **Run tests matching pattern**: `bun test --grep "pattern"`
-4. **Run with coverage**: `bun run test:cov`
+2. **Run specific test file**: `bun run test -- path/to/file.spec.ts` (Jest, not Bun test — no
+   `--grep`; use `-t "pattern"` for a name filter, e.g. `bun run test -- -t "createClassService"`)
+3. **Run with coverage**: `bun run test:cov`
 
 ## Writing Unit Tests
 
 - Create `*.spec.ts` files in `test/` directory
 - Mirror source structure: `src/features/class/class.service.ts` → `test/features/class/class.service.spec.ts`
-- Use Bun test runner (not Jest) for unit tests
-- Mock external dependencies (Redis, email, etc.) but NOT the database for integration tests
+- Use Jest (`@nestjs/testing` or plain `jest.fn()` mocks) — not `bun:test`
+- Mock injected sibling services (e.g. `UserService`, `LessonService`) but NOT the database for
+  integration-style tests
 - Test both success and error paths
 - Use descriptive test names
 
@@ -77,19 +78,22 @@ bun run test:debug        # Debug tests with inspect
 
 ```typescript
 // test/features/class/class.service.spec.ts
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { ClassService } from '../../../src/features/class/class.service';
+import { ClassRepository } from '../../../src/features/class/class.repository';
 
 describe('ClassService', () => {
   let service: ClassService;
-  let repository: ClassRepository;
+  let repository: jest.Mocked<ClassRepository>;
 
   beforeEach(() => {
     repository = {
-      getClasses: mock(),
-      getClassById: mock(),
+      getClasses: jest.fn(),
+      getClassById: jest.fn(),
+      getClassByCode: jest.fn(),
+      createClass: jest.fn(),
       // ... other methods
-    } as any;
-    
+    } as unknown as jest.Mocked<ClassRepository>;
+
     service = new ClassService(repository);
   });
 
@@ -98,8 +102,8 @@ describe('ClassService', () => {
       // Arrange
       const userId = 'test-user-id';
       const dto = { name: 'Test Class', subject: 'Math' };
-      repository.getClassByCode = mock().mockResolvedValue(null);
-      repository.createClass = mock().mockResolvedValue({ id: 'new-id', ...dto });
+      repository.getClassByCode.mockResolvedValue(null);
+      repository.createClass.mockResolvedValue({ id: 'new-id', ...dto });
 
       // Act
       const result = await service.createClassService({ userId, data: dto });
@@ -111,7 +115,7 @@ describe('ClassService', () => {
 
     it('should throw ConflictException if class code already exists', async () => {
       // Arrange
-      repository.getClassByCode = mock().mockResolvedValue({ id: 'existing' });
+      repository.getClassByCode.mockResolvedValue({ id: 'existing' } as any);
 
       // Act & Assert
       await expect(service.createClassService({ userId: 'user', data: { name: 'Test' } }))
@@ -123,16 +127,15 @@ describe('ClassService', () => {
 
 ## Coverage
 
-- Coverage provider: `c8` (Bun test)
+- Coverage provider: Jest's built-in `--coverage` (no separate `c8`/`vitest` config)
 - Coverage directories: `src/` (source code)
-- Run `bun run test:cov` to generate coverage report
-- Check coverage thresholds in `package.json` or `vitest.config.ts`
+- Run `bun run test:cov` to generate a coverage report
 
 ## Common Issues
 
-1. **Jest 29 cannot run under Bun**: Only `test:e2e` script uses Jest — requires Node.js
-2. **No DB fixtures**: E2E tests are limited without database setup
-3. **Mocking**: Use `mock()` from `bun:test` for unit tests, Jest mocks for E2E
+1. **No DB fixtures**: E2E tests are limited without database setup
+2. **Mocking**: Use `jest.fn()` / `jest.mock()` for both unit and E2E tests — there is no
+   separate Bun-native mocking API in this repo
 
 ## Before finishing
 

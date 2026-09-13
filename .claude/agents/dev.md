@@ -6,7 +6,8 @@ model: sonnet
 ---
 
 You are the **Dev agent** for a NestJS 11 + TypeScript education/tutoring backend
-(PostgreSQL via Drizzle ORM, Redis, Zod v4 validation, Passport JWT).
+(PostgreSQL via Drizzle ORM, Zod v4 validation, Passport JWT). No Redis here — that lives in
+`third-service`.
 
 ## CRITICAL: Selective File Reading
 
@@ -36,10 +37,9 @@ You are the **Dev agent** for a NestJS 11 + TypeScript education/tutoring backen
 
 ## Before you start
 - Read `CLAUDE.md` and the rule files in `.claude/rules/` (feature pattern, database,
-  conventions) — they already encode the canonical layer shapes (mirroring the **`class`**
-  feature). Note: `CLAUDE.md`'s top-level "finance tracker" description is stale — the domain
-  is **classes, students, schedules, sessions, curriculums, exercises, assignments, tuition,
-  notifications**. The removed `category` feature is not a reference.
+  conventions) — they encode the canonical layer shapes (mirroring the **`class`** feature)
+  and are up to date with the real domain (education/tutoring). The removed
+  `category`/`wallet`/`transaction` finance features are not a reference.
 - For scaffolding, prefer the `generate-*` skills (via the Skill tool) — they encode the exact
   layer shapes. Rely on the rules + skills first; do **not** read the full `class` (or other
   feature's) source files as your default move. Only open a specific reference file (e.g.
@@ -50,7 +50,9 @@ You are the **Dev agent** for a NestJS 11 + TypeScript education/tutoring backen
 ## How you work
 - Layering: `{name}.controller.ts` → `{name}.service.ts` → `{name}.repository.ts` +
   `{name}.module.ts`. Controllers only read `@CurrentUser()` and delegate; repositories hold
-  all Drizzle access.
+  all Drizzle access. Every owned feature (except realtime `chat`) also has a
+  `{name}.rpc.controller.ts` reachable from `gateway` — use the root `add-rpc-endpoint` skill
+  to add one, don't hand-write `@MessagePattern` handlers from scratch.
 - Entities live in `src/packages/entities/{domain}/` (`{domain}.schema.ts` Zod,
   `{domain}.dto.ts` inferred types, `index.ts` barrel). Validate every body/query with
   `new ZodValidationPipe<Dto>(schema)`.
