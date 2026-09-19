@@ -1,4 +1,4 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
   CreateSessionDto,
@@ -6,7 +6,6 @@ import type {
   GetSessionsQueryDto,
   UpdateSessionDto,
 } from '@packages/entities/session';
-import { RpcExceptionFilter } from '@packages/filters';
 import { SessionService } from './session.service';
 
 /**
@@ -14,7 +13,6 @@ import { SessionService } from './session.service';
  * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
  * `SessionService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class SessionRpcController {
   constructor(private readonly sessionService: SessionService) {}

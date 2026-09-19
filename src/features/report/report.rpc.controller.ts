@@ -1,6 +1,5 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { RpcExceptionFilter } from '@packages/filters';
 import type { GetLearningClassReportsQueryDto } from '@packages/entities/report';
 import { ReportService } from './report.service';
 
@@ -9,7 +8,6 @@ import { ReportService } from './report.service';
  * `TUTOR_SERVICE` `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the
  * same, unmodified `ReportService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class ReportRpcController {
   constructor(private readonly reportService: ReportService) {}
