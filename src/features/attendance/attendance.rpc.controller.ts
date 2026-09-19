@@ -1,7 +1,6 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type { UpsertAttendanceDto } from '@packages/entities/attendance';
-import { RpcExceptionFilter } from '@packages/filters';
 import { AttendanceService } from './attendance.service';
 
 /**
@@ -9,7 +8,6 @@ import { AttendanceService } from './attendance.service';
  * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
  * `AttendanceService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class AttendanceRpcController {
   constructor(private readonly attendanceService: AttendanceService) {}

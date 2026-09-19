@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
-import { RabbitMQModule } from './features/rabbitmq/rabbitmq.module';
 import { UserModule } from './features/user/user.module';
 import { AgentsModule } from './features/agents/agents.module';
 import { AttendanceModule } from './features/attendance/attendance.module';
@@ -21,14 +20,15 @@ import { TuitionModule } from './features/tuition/tuition.module';
 import { JwtAuthGuard, LanguageGuard } from '@packages/guards';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { KafkaModule } from './features/kafka/kafka.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    KafkaModule,
     DatabaseModule,
-    RabbitMQModule,
     UserModule,
     ClassModule,
     CurriculumModule,

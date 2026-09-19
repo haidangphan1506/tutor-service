@@ -1,11 +1,10 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
   CreateLessonBodyDto,
   GetLessonsQueryDto,
   UpdateLessonDto,
 } from '@packages/entities/curriculum';
-import { RpcExceptionFilter } from '@packages/filters';
 import { LessonService } from './lesson.service';
 
 /**
@@ -13,7 +12,6 @@ import { LessonService } from './lesson.service';
  * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
  * `LessonService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class LessonRpcController {
   constructor(private readonly lessonService: LessonService) {}

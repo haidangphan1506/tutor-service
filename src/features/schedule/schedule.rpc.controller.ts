@@ -1,4 +1,4 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
   CreateScheduleDto,
@@ -6,7 +6,6 @@ import type {
   GetSchedulesQueryDto,
   UpdateScheduleDto,
 } from '@packages/entities/schedule';
-import { RpcExceptionFilter } from '@packages/filters';
 import { ScheduleService } from './schedule.service';
 
 /**
@@ -14,7 +13,6 @@ import { ScheduleService } from './schedule.service';
  * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
  * `ScheduleService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class ScheduleRpcController {
   constructor(private readonly scheduleService: ScheduleService) {}

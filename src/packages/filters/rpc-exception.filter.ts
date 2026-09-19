@@ -1,18 +1,25 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { throwError } from 'rxjs';
 
+const SERVICE_NAME = 'tutor-service';
+
 export interface RpcErrorPayload {
   statusCode: number;
   message: string | string[];
   errors?: unknown;
+  /** Which service actually threw — preserved as-is when relaying another service's error. */
+  serviceName: string;
 }
 
 /**
- * Bound per-controller (`@UseFilters(RpcExceptionFilter)`) on the `*.rpc.controller.ts` classes
- * only — never registered globally, so the HTTP side keeps using `HttpExceptionFilter` untouched.
- * `ClientProxy.send()` on the gateway side has no notion of `HttpException`; this normalizes
- * whatever a message-pattern handler throws into a plain, JSON-serializable error object the
- * gateway's `sendRpc` helper can turn back into the right `HttpException`.
+ * Registered as a *microservice-scoped* global filter in `main.ts`
+ * (`kafkaMicroservice.useGlobalFilters(...)`) — every `@MessagePattern` handler gets it
+ * automatically, no per-controller `@UseFilters(RpcExceptionFilter)` needed. It is never passed
+ * to `app.useGlobalFilters()` on the main HTTP `app`, so the HTTP side keeps using
+ * `HttpExceptionFilter` untouched (this filter reads an RPC context, not an Express `Response`).
+ * The gateway's `ClientKafka` has no notion of `HttpException`; this normalizes whatever a
+ * message-pattern handler throws into a plain, JSON-serializable error object the caller's
+ * `KafkaProducer.send` helper can turn back into the right `HttpException`.
  */
 @Catch()
 export class RpcExceptionFilter implements ExceptionFilter {
@@ -24,9 +31,19 @@ export class RpcExceptionFilter implements ExceptionFilter {
         typeof response === 'string'
           ? response
           : ((response as { message?: string | string[] })?.message ?? exception.message);
-      const errors = typeof response === 'object' ? (response as { errors?: unknown }).errors : undefined;
+      const errors =
+        typeof response === 'object' ? (response as { errors?: unknown }).errors : undefined;
+      // If this exception is `KafkaProducer.send()` rethrowing another service's error, its
+      // response body already carries the origin's `serviceName` — preserve it instead of
+      // overwriting with our own.
+      const serviceName =
+        typeof response === 'object'
+          ? ((response as { serviceName?: string }).serviceName ?? SERVICE_NAME)
+          : SERVICE_NAME;
 
-      return throwError(() => ({ statusCode: status, message, errors } satisfies RpcErrorPayload));
+      return throwError(
+        () => ({ statusCode: status, message, errors, serviceName }) satisfies RpcErrorPayload,
+      );
     }
 
     const message = exception instanceof Error ? exception.message : 'Internal server error';
@@ -35,6 +52,7 @@ export class RpcExceptionFilter implements ExceptionFilter {
         ({
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
           message,
+          serviceName: SERVICE_NAME,
         }) satisfies RpcErrorPayload,
     );
   }

@@ -1,6 +1,5 @@
-import { Controller, UseFilters } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { RpcExceptionFilter } from '@packages/filters';
 import { DashboardService } from './dashboard.service';
 
 /**
@@ -8,7 +7,6 @@ import { DashboardService } from './dashboard.service';
  * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
  * `DashboardService` the HTTP controller uses; no business logic lives here.
  */
-@UseFilters(RpcExceptionFilter)
 @Controller()
 export class DashboardRpcController {
   constructor(private readonly dashboardService: DashboardService) {}
