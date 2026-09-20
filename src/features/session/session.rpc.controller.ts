@@ -10,7 +10,7 @@ import { SessionService } from './session.service';
 
 /**
  * Message-pattern mirror of `SessionController` — reached only by the gateway's `TUTOR_SERVICE`
- * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
+ * `ClientProxy` over Kafka. Delegates to the same, unmodified
  * `SessionService` the HTTP controller uses; no business logic lives here.
  */
 @Controller()

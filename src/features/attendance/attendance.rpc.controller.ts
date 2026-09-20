@@ -5,7 +5,7 @@ import { AttendanceService } from './attendance.service';
 
 /**
  * Message-pattern mirror of `AttendanceController` — reached only by the gateway's `TUTOR_SERVICE`
- * `ClientProxy` over RabbitMQ (RMQ transport, `tutor_queue`). Delegates to the same, unmodified
+ * `ClientProxy` over Kafka. Delegates to the same, unmodified
  * `AttendanceService` the HTTP controller uses; no business logic lives here.
  */
 @Controller()
